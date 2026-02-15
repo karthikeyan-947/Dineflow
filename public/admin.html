@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DineFlow — Admin Dashboard</title>
+    <meta name="description" content="Restaurant management dashboard">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+</head>
+
+<body class="admin-page">
+
+    <!-- Header -->
+    <header class="admin-header">
+        <h1>⚙️ DineFlow Admin</h1>
+        <div class="admin-links">
+            <a href="/" class="admin-link">📱 Menu</a>
+            <a href="/kitchen" class="admin-link">👨‍🍳 Kitchen</a>
+        </div>
+    </header>
+
+    <!-- Stats -->
+    <div class="admin-stats" id="adminStats">
+        <div class="admin-stat-card revenue">
+            <span class="asc-icon">💰</span>
+            <div class="asc-label">Today's Revenue</div>
+            <div class="asc-value" id="statRevenue">₹0</div>
+        </div>
+        <div class="admin-stat-card orders">
+            <span class="asc-icon">📋</span>
+            <div class="asc-label">Today's Orders</div>
+            <div class="asc-value" id="statTotalOrders">0</div>
+        </div>
+        <div class="admin-stat-card active">
+            <span class="asc-icon">🔥</span>
+            <div class="asc-label">Active Orders</div>
+            <div class="asc-value" id="statActiveOrders">0</div>
+        </div>
+        <div class="admin-stat-card items">
+            <span class="asc-icon">🍽️</span>
+            <div class="asc-label">Menu Items</div>
+            <div class="asc-value" id="statMenuItems">0</div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="menu" onclick="switchTab('menu')">🍽️ Menu</button>
+        <button class="admin-tab" data-tab="orders" onclick="switchTab('orders')">📋 Orders</button>
+        <button class="admin-tab" data-tab="qr" onclick="switchTab('qr')">📱 QR Code</button>
+        <button class="admin-tab" data-tab="settings" onclick="switchTab('settings')">⚙️ Settings</button>
+    </div>
+
+    <!-- Menu Panel -->
+    <div class="admin-panel active" id="panel-menu">
+        <div class="menu-mgmt-header">
+            <h2>Menu Management</h2>
+            <button class="add-item-btn" onclick="openAddModal()">+ Add Item</button>
+        </div>
+        <table class="menu-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="menuTableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Orders Panel -->
+    <div class="admin-panel" id="panel-orders">
+        <div class="menu-mgmt-header">
+            <h2>Order History</h2>
+            <button class="add-item-btn" onclick="refreshOrders()" style="background: var(--status-new);">↻
+                Refresh</button>
+        </div>
+        <table class="menu-table">
+            <thead>
+                <tr>
+                    <th>Order #</th>
+                    <th>Table</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody id="ordersTableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- QR Panel -->
+    <div class="admin-panel" id="panel-qr">
+        <div class="qr-section">
+            <h2>📱 Table QR Codes</h2>
+            <p>Each table gets its own QR code with the table number built-in. Customers scan → order → WhatsApp
+                includes the table number automatically!</p>
+
+            <div
+                style="margin:16px 0;padding:12px 16px;background:rgba(99,102,241,0.1);border-radius:10px;border:1px solid rgba(99,102,241,0.3);">
+                <strong style="color:#818cf8;">How it works:</strong>
+                <span style="color:var(--d-text-secondary);font-size:13px;"> Table 5 QR → opens
+                    <code>yoursite.com/?table=5</code> → WhatsApp message says "📍 Table 5"</span>
+            </div>
+
+            <div class="qr-instructions" style="margin-bottom:16px;">
+                <h3>📋 Steps</h3>
+                <ol>
+                    <li>Print all QR codes below (or screenshot them)</li>
+                    <li>Cut and stick one QR on each table</li>
+                    <li>Customer scans → orders → you get WhatsApp with table number!</li>
+                </ol>
+            </div>
+
+            <button class="add-item-btn" onclick="printAllQR()"
+                style="margin-bottom:16px;background:var(--status-new);">🖨️ Print All QR Codes</button>
+
+            <div id="qrGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="admin-panel" id="panel-settings">
+        <div class="menu-mgmt-header">
+            <h2>Restaurant Settings</h2>
+            <button class="add-item-btn" onclick="saveSettings()" style="background: var(--status-ready);">💾
+                Save</button>
+        </div>
+        <div style="max-width: 500px;">
+            <div class="form-group"
+                style="border:2px solid var(--status-ready);border-radius:var(--radius);padding:16px;margin-bottom:20px;">
+                <label style="color:var(--status-ready);font-size:14px;">📱 Cashier WhatsApp Number (IMPORTANT)</label>
+                <input type="text" id="settingCashierPhone" placeholder="e.g. 919876543210 (with country code, no +)">
+                <p style="font-size:12px;color:var(--d-text-secondary);margin-top:6px;">
+                    Customer orders will be sent to this WhatsApp number. Use format: 91XXXXXXXXXX (country code +
+                    number, no spaces/dashes)
+                </p>
+            </div>
+            <div class="form-group">
+                <label>Restaurant Name</label>
+                <input type="text" id="settingName" placeholder="Your Restaurant Name">
+            </div>
+            <div class="form-group">
+                <label>Tagline</label>
+                <input type="text" id="settingTagline" placeholder="A short description">
+            </div>
+            <div class="form-group">
+                <label>Number of Tables</label>
+                <input type="number" id="settingTables" placeholder="20" min="1">
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Menu Item Modal -->
+    <div class="modal-overlay" id="itemModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Add Menu Item</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editItemId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Item Name</label>
+                        <input type="text" id="itemName" placeholder="e.g. Butter Chicken">
+                    </div>
+                    <div class="form-group">
+                        <label>Emoji Icon</label>
+                        <input type="text" id="itemEmoji" placeholder="e.g. 🍛" maxlength="4">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="itemDesc" rows="2" placeholder="Short description of the dish"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Price (₹)</label>
+                        <input type="number" id="itemPrice" placeholder="299" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="itemCategory">
+                            <option value="Starters">Starters</option>
+                            <option value="Main Course">Main Course</option>
+                            <option value="Breads">Breads</option>
+                            <option value="Beverages">Beverages</option>
+                            <option value="Desserts">Desserts</option>
+                            <option value="Specials">Specials</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+                <button class="modal-btn save" onclick="saveItem()">Save Item</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/js/admin.js"></script>
+</body>
+
+</html>
