@@ -231,9 +231,8 @@ function renderOrdersTable() {
     }).join('');
 }
 
-// ─── QR Code Generation (Per-Table) ──────────────────────────────
+// ─── QR Code Generation (Per-Table — Real Scannable QR) ─────────
 async function generateQR() {
-    // Get table count from config
     let tables = 20;
     try {
         const res = await fetch(`${API}/api/config`);
@@ -247,25 +246,15 @@ async function generateQR() {
     let html = '';
     for (let t = 1; t <= tables; t++) {
         const url = `${baseUrl}/?table=${t}`;
+        const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}&margin=8`;
         html += `
         <div style="background:#1a1a2e;border-radius:12px;padding:16px;text-align:center;border:1px solid #2a2a45;">
-            <div style="font-size:13px;font-weight:700;color:#818cf8;margin-bottom:8px;">TABLE ${t}</div>
-            <canvas id="qrCanvas-${t}" style="width:160px;height:160px;background:white;border-radius:8px;"></canvas>
+            <div style="font-size:15px;font-weight:700;color:#818cf8;margin-bottom:10px;">📍 TABLE ${t}</div>
+            <img src="${qrImgUrl}" alt="Table ${t} QR" style="width:160px;height:160px;border-radius:8px;background:white;">
             <div style="font-size:11px;color:#6b7280;margin-top:8px;word-break:break-all;">${url}</div>
         </div>`;
     }
     grid.innerHTML = html;
-
-    // Draw QR on each canvas after DOM renders
-    requestAnimationFrame(() => {
-        for (let t = 1; t <= tables; t++) {
-            const canvas = document.getElementById(`qrCanvas-${t}`);
-            if (canvas) {
-                const url = `${baseUrl}/?table=${t}`;
-                drawQRCode(canvas, url, t);
-            }
-        }
-    });
 }
 
 // Print all QR codes in a clean printable layout
@@ -274,7 +263,7 @@ function printAllQR() {
     let tables = parseInt(document.getElementById('settingTables')?.value) || 20;
 
     const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
+    let html = `
         <html><head><title>DineFlow — Table QR Codes</title>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -287,8 +276,8 @@ function printAllQR() {
                 text-align: center;
                 page-break-inside: avoid;
             }
-            .card h2 { font-size: 22px; margin-bottom: 6px; }
-            .card canvas { width: 150px; height: 150px; }
+            .card h2 { font-size: 22px; margin-bottom: 8px; }
+            .card img { width: 150px; height: 150px; }
             .card p { font-size: 11px; color: #888; margin-top: 6px; }
             .instructions { text-align: center; margin-bottom: 20px; color: #888; font-size: 13px; }
             @media print {
@@ -301,123 +290,22 @@ function printAllQR() {
             <p>Cut along dashed lines and place on tables</p>
             <button class="no-print" onclick="window.print()" style="margin:12px;padding:10px 24px;font-size:16px;cursor:pointer;border-radius:8px;border:none;background:#6366f1;color:white;font-weight:600;">🖨️ Print</button>
         </div>
-        <div class="grid">
-    `);
+        <div class="grid">`;
 
     for (let t = 1; t <= tables; t++) {
-        printWindow.document.write(`
+        const url = `${baseUrl}/?table=${t}`;
+        const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}&margin=8`;
+        html += `
             <div class="card">
                 <h2>Table ${t}</h2>
-                <canvas id="pqr-${t}" width="200" height="200"></canvas>
+                <img src="${qrImgUrl}" alt="Table ${t} QR">
                 <p>Scan to order</p>
-            </div>
-        `);
+            </div>`;
     }
 
-    printWindow.document.write('</div></body></html>');
+    html += '</div></body></html>';
+    printWindow.document.write(html);
     printWindow.document.close();
-
-    // Draw QR codes after content loads
-    printWindow.onload = () => {
-        for (let t = 1; t <= tables; t++) {
-            const canvas = printWindow.document.getElementById(`pqr-${t}`);
-            if (canvas) {
-                drawQRCodeOnCanvas(canvas, `${baseUrl}/?table=${t}`, t);
-            }
-        }
-    };
-}
-
-// Draw QR code on canvas with table number
-function drawQRCode(canvas, text, tableNum) {
-    const size = 200;
-    canvas.width = size;
-    canvas.height = size;
-    drawQRCodeOnCanvas(canvas, text, tableNum);
-}
-
-function drawQRCodeOnCanvas(canvas, text, tableNum) {
-    const size = canvas.width;
-    const ctx = canvas.getContext('2d');
-
-    // Background
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, size, size);
-
-    // Generate QR pattern
-    const moduleCount = 25;
-    const moduleSize = size / moduleCount;
-    const data = stringToPattern(text, moduleCount);
-
-    // Draw modules
-    ctx.fillStyle = '#1a1a2e';
-    for (let row = 0; row < moduleCount; row++) {
-        for (let col = 0; col < moduleCount; col++) {
-            if (data[row][col]) {
-                ctx.fillRect(col * moduleSize, row * moduleSize, moduleSize, moduleSize);
-            }
-        }
-    }
-
-    // Finder patterns
-    drawFinderPattern(ctx, 0, 0, moduleSize);
-    drawFinderPattern(ctx, (moduleCount - 7) * moduleSize, 0, moduleSize);
-    drawFinderPattern(ctx, 0, (moduleCount - 7) * moduleSize, moduleSize);
-
-    // Table number in center
-    const logoSize = 44;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(size / 2 - logoSize / 2 - 3, size / 2 - logoSize / 2 - 3, logoSize + 6, logoSize + 6);
-    ctx.fillStyle = '#1a1a2e';
-    ctx.font = 'bold 14px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`T${tableNum}`, size / 2, size / 2);
-}
-
-function drawFinderPattern(ctx, x, y, moduleSize) {
-    const s = moduleSize;
-
-    // Outer black
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(x, y, 7 * s, 7 * s);
-
-    // Inner white
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(x + s, y + s, 5 * s, 5 * s);
-
-    // Center black
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(x + 2 * s, y + 2 * s, 3 * s, 3 * s);
-}
-
-function stringToPattern(str, size) {
-    const pattern = [];
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash |= 0;
-    }
-
-    for (let row = 0; row < size; row++) {
-        pattern[row] = [];
-        for (let col = 0; col < size; col++) {
-            // Skip finder pattern areas
-            if ((row < 8 && col < 8) || (row < 8 && col > size - 9) || (row > size - 9 && col < 8)) {
-                pattern[row][col] = false;
-                continue;
-            }
-            // Timing patterns
-            if (row === 6 || col === 6) {
-                pattern[row][col] = (row + col) % 2 === 0;
-                continue;
-            }
-            // Data pattern
-            const val = Math.abs(hash * (row * size + col + 1)) % 100;
-            pattern[row][col] = val < 45;
-        }
-    }
-    return pattern;
 }
 
 // ─── Settings ─────────────────────────────────────────────────────
