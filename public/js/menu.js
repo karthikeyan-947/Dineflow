@@ -305,16 +305,18 @@ async function placeOrder() {
         const cashierPhone = restaurantConfig.cashierPhone;
 
         if (cashierPhone) {
-            // 3. Open WhatsApp with pre-filled message to cashier
+            // 3. Open WhatsApp instantly (no delay, direct redirect)
             const waUrl = `https://wa.me/${cashierPhone}?text=${encodeURIComponent(whatsappMsg)}`;
 
-            // Show confirmation first
-            showOrderConfirmation(order);
+            // Clear cart first
+            cart = {};
+            updateCartUI();
+            renderMenu();
+            toggleCart();
 
-            // Open WhatsApp after a short delay so user sees confirmation
-            setTimeout(() => {
-                window.open(waUrl, '_blank');
-            }, 800);
+            // Redirect instantly to WhatsApp — much faster than window.open
+            window.location.href = waUrl;
+            return; // Exit early since we're redirecting
         } else {
             // No cashier phone set — show confirmation only
             showOrderConfirmation(order);
@@ -343,22 +345,22 @@ function buildWhatsAppMessage(order) {
     const items = order.items;
     const tableText = order.tableNumber > 0 ? `Table ${order.tableNumber}` : 'Takeaway';
 
-    let msg = `🍽️ *New Order — ${restaurantName}*\n`;
-    msg += `📍 ${tableText}\n`;
-    msg += `🔢 Order #${order.orderNumber}\n`;
-    msg += `━━━━━━━━━━━━━━━\n`;
+    let msg = `*NEW ORDER*\n`;
+    msg += `${restaurantName}\n`;
+    msg += `${tableText} | Order #${order.orderNumber}\n`;
+    msg += `----------------------\n`;
 
     items.forEach(item => {
         const itemTotal = item.price * item.quantity;
-        msg += `• ${item.quantity}× ${item.name} — ₹${itemTotal}\n`;
+        msg += `${item.quantity}x ${item.name} - Rs.${itemTotal}\n`;
     });
 
-    msg += `━━━━━━━━━━━━━━━\n`;
-    msg += `💰 *Total: ₹${order.total}*\n`;
+    msg += `----------------------\n`;
+    msg += `*TOTAL: Rs.${order.total}*\n`;
 
     const now = new Date();
     const time = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-    msg += `⏰ ${time}`;
+    msg += `Time: ${time}`;
 
     return msg;
 }
